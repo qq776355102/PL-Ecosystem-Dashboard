@@ -11,8 +11,8 @@
   "dependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "ethers": "^6.16.0",
-    "recharts": "^3.6.0"
+    "ethers": "6.13.2",
+    "recharts": "2.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

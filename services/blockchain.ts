@@ -22,16 +22,26 @@ import { StakingData } from '../types';
 let currentProvider: ethers.JsonRpcProvider | null = null;
 let currentRpcUrl: string | null = null;
 
-export function getProvider(rpcUrl: string) {
+/**
+ * Returns a cached provider or creates a new one if the URL changes.
+ */
+export function getProvider(rpcUrl: string): ethers.JsonRpcProvider {
     if (!currentProvider || currentRpcUrl !== rpcUrl) {
-        currentProvider = new ethers.JsonRpcProvider(rpcUrl);
-        currentRpcUrl = rpcUrl;
+        try {
+            currentProvider = new ethers.JsonRpcProvider(rpcUrl);
+            currentRpcUrl = rpcUrl;
+        } catch (error) {
+            console.error("Failed to initialize provider:", error);
+            // Fallback to default if provided URL is invalid
+            currentProvider = new ethers.JsonRpcProvider("https://polygon-bor-rpc.publicnode.com");
+            currentRpcUrl = "https://polygon-bor-rpc.publicnode.com";
+        }
     }
     return currentProvider;
 }
 
 /**
- * Custom Total Staking Query
+ * Custom Total Staking Query via specific contract call
  */
 async function queryTotalStaking(address: string, provider: ethers.JsonRpcProvider): Promise<bigint> {
     try {
@@ -47,7 +57,9 @@ async function queryTotalStaking(address: string, provider: ethers.JsonRpcProvid
                 return BigInt(results[1]);
             }
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+        console.warn("Total staking query failed:", e);
+    }
     return 0n;
 }
 
@@ -133,42 +145,47 @@ export async function queryAddressFullData(
         { target: SLGNS_TOKEN.address, callData: erc20Iface.encodeFunctionData('balanceOf', [derivedAddress]) }
     ];
 
-    const [simpleResults, totalStaking, mintStaked, bondStaked] = await Promise.all([
-        multi.tryAggregate.staticCall(false, simpleCalls),
-        queryTotalStaking(aAddress, provider),
-        batchQueryDynamicDetails(
-            aAddress, 
-            AIRDROP_A_ENERGY_STAKE_CONTRACTS, 
-            STAKE_ABI, 
-            'getUserStakesCount', 
-            'stakes', 
-            provider,
-            (decoded) => decoded.exists ? BigInt(decoded.principal) : 0n
-        ),
-        batchQueryDynamicDetails(
-            aAddress, 
-            BOND_CONTRACT_ADDRESSES, 
-            LONG_BONDS_ABI, 
-            'getBondInfoDataLength', 
-            'bondInfoData', 
-            provider,
-            (decoded) => decoded.bond && decoded.bond.owner !== ethers.ZeroAddress ? BigInt(decoded.bond.payout) : 0n
-        )
-    ]);
+    try {
+        const [simpleResults, totalStaking, mintStaked, bondStaked] = await Promise.all([
+            multi.tryAggregate.staticCall(false, simpleCalls),
+            queryTotalStaking(aAddress, provider),
+            batchQueryDynamicDetails(
+                aAddress, 
+                AIRDROP_A_ENERGY_STAKE_CONTRACTS, 
+                STAKE_ABI, 
+                'getUserStakesCount', 
+                'stakes', 
+                provider,
+                (decoded) => decoded.exists ? BigInt(decoded.principal) : 0n
+            ),
+            batchQueryDynamicDetails(
+                aAddress, 
+                BOND_CONTRACT_ADDRESSES, 
+                LONG_BONDS_ABI, 
+                'getBondInfoDataLength', 
+                'bondInfoData', 
+                provider,
+                (decoded) => decoded.bond && decoded.bond.owner !== ethers.ZeroAddress ? BigInt(decoded.bond.payout) : 0n
+            )
+        ]);
 
-    return {
-        totalStaking,
-        airdropEnergyStaking: mintStaked,
-        bondStaking: bondStaked,
-        turbineBalance: simpleResults[0].success ? BigInt(turbineIface.decodeFunctionResult('getTurbineBal', simpleResults[0].returnData)[0]) : 0n,
-        zhuwangReward: simpleResults[1].success ? BigInt(zhuwangIface.decodeFunctionResult('claimable', simpleResults[1].returnData)[0]) : 0n,
-        lgnsBalance: simpleResults[2].success ? BigInt(erc20Iface.decodeFunctionResult('balanceOf', simpleResults[2].returnData)[0]) : 0n,
-        slgnsBalance: simpleResults[3].success ? BigInt(erc20Iface.decodeFunctionResult('balanceOf', simpleResults[3].returnData)[0]) : 0n,
-    };
+        return {
+            totalStaking,
+            airdropEnergyStaking: mintStaked,
+            bondStaking: bondStaked,
+            turbineBalance: simpleResults[0].success ? BigInt(turbineIface.decodeFunctionResult('getTurbineBal', simpleResults[0].returnData)[0]) : 0n,
+            zhuwangReward: simpleResults[1].success ? BigInt(zhuwangIface.decodeFunctionResult('claimable', simpleResults[1].returnData)[0]) : 0n,
+            lgnsBalance: simpleResults[2].success ? BigInt(erc20Iface.decodeFunctionResult('balanceOf', simpleResults[2].returnData)[0]) : 0n,
+            slgnsBalance: simpleResults[3].success ? BigInt(erc20Iface.decodeFunctionResult('balanceOf', simpleResults[3].returnData)[0]) : 0n,
+        };
+    } catch (error) {
+        console.error("Full data query failed:", error);
+        throw error;
+    }
 }
 
 export function formatUnits(value: bigint | string | undefined, decimals: number = 9): string {
-    if (value === undefined || value === "") return "0.00";
+    if (value === undefined || value === "" || value === null) return "0.00";
     try {
         return ethers.formatUnits(BigInt(value), decimals);
     } catch (e) {

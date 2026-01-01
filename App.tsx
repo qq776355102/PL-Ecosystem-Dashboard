@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AddressInfo } from './types';
 import { queryAddressFullData, formatUnits } from './services/blockchain';
 import { storage } from './services/storage';
@@ -9,7 +9,6 @@ import {
   PieChart, Pie, Cell 
 } from 'recharts';
 
-// Initial data structure matching user's json
 const INITIAL_ADDRESS_INFO = {
   "items": [
     {
@@ -53,7 +52,6 @@ const App: React.FC = () => {
   const [updateProgress, setUpdateProgress] = useState(0);
   const [editingRemark, setEditingRemark] = useState<{index: number, value: string} | null>(null);
 
-  // Load initial data
   useEffect(() => {
     const saved = storage.loadData();
     if (saved) {
@@ -71,7 +69,6 @@ const App: React.FC = () => {
     localStorage.setItem('POLYGON_DASHBOARD_RPC', url);
   };
 
-  // Optimized Update logic with unique addressing
   const runBatchUpdate = async () => {
     if (isUpdating) return;
     setIsUpdating(true);
@@ -149,8 +146,8 @@ const App: React.FC = () => {
 
   const filteredData = useMemo(() => {
     return data.filter(item => 
-      item.remark.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.aAddress.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.remark || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.aAddress || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [data, searchTerm]);
 
@@ -183,19 +180,19 @@ const App: React.FC = () => {
   const maskAddress = (addr: string) => addr ? `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}` : '';
 
   return (
-    <div className="min-h-screen p-4 md:p-8 space-y-8 text-slate-100 bg-slate-950">
+    <div className="min-h-screen p-4 md:p-8 space-y-8 text-slate-100">
       {/* Header */}
-      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-slate-900/40 p-6 rounded-3xl border border-slate-800 backdrop-blur-md shadow-2xl">
+      <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-slate-900/60 p-6 rounded-3xl border border-slate-800 backdrop-blur-xl shadow-2xl">
         <div className="flex-1">
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tighter bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Polygon Ecosystem Dashboard</h1>
-          <p className="text-slate-500 font-medium">Real-time Multicall-optimized Asset Tracking</p>
+          <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tighter bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Polygon Data Engine</h1>
+          <p className="text-slate-500 font-semibold text-sm">Multicall V3 • Real-time Batch Tracking</p>
         </div>
         
         <div className="flex flex-col md:flex-row flex-wrap items-center gap-4">
-          <div className="flex flex-col w-full md:w-80">
-            <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 ml-1">RPC Network URL</label>
+          <div className="flex flex-col w-full md:w-72">
+            <label className="text-[10px] text-slate-500 font-bold uppercase mb-1.5 tracking-widest ml-1">RPC Connection</label>
             <input 
-              className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="bg-slate-950/80 border border-slate-700/50 rounded-xl px-4 py-2.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-300"
               value={rpcUrl}
               onChange={(e) => handleRpcChange(e.target.value)}
               placeholder="Enter RPC URL..."
@@ -206,24 +203,24 @@ const App: React.FC = () => {
             <button 
               onClick={runBatchUpdate}
               disabled={isUpdating}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 ${isUpdating ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 ${isUpdating ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 active:scale-95'}`}
             >
               {isUpdating ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                   {updateProgress}%
                 </>
-              ) : 'Batch Update'}
+              ) : 'Update Registry'}
             </button>
             
-            <label className="px-5 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl cursor-pointer transition-all border border-slate-700 text-sm font-bold active:scale-95 shadow-lg">
+            <label className="px-5 py-3 bg-slate-800/80 hover:bg-slate-700 rounded-2xl cursor-pointer transition-all border border-slate-700 text-sm font-bold active:scale-95 shadow-lg">
               Import
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
             
             <button 
               onClick={() => storage.exportToJSON(data)}
-              className="px-5 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all border border-slate-700 text-sm font-bold active:scale-95 shadow-lg"
+              className="px-5 py-3 bg-slate-800/80 hover:bg-slate-700 rounded-2xl transition-all border border-slate-700 text-sm font-bold active:scale-95 shadow-lg"
             >
               Export
             </button>
@@ -231,118 +228,129 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: 'Total Staked', value: formatUnits(stats.totalStaked), color: 'text-indigo-400' },
-          { label: 'Mint Staked', value: formatUnits(stats.totalMintStaked), color: 'text-cyan-400' },
-          { label: 'Bond Staked', value: formatUnits(stats.totalBondStaked), color: 'text-violet-400' },
-          { label: 'LGNS Bal', value: formatUnits(stats.totalLGNS), color: 'text-pink-400' },
-          { label: 'slgns Bal', value: formatUnits(stats.totalSLGNS, 9), color: 'text-emerald-400' },
-          { label: 'Spider Rewards', value: formatUnits(stats.totalRewards), color: 'text-amber-400' },
+          { label: 'Total Staked', value: formatUnits(stats.totalStaked), color: 'text-indigo-400', icon: '💎' },
+          { label: 'Mint Staked', value: formatUnits(stats.totalMintStaked), color: 'text-cyan-400', icon: '🔋' },
+          { label: 'Bond Staked', value: formatUnits(stats.totalBondStaked), color: 'text-violet-400', icon: '📜' },
+          { label: 'LGNS Bal', value: formatUnits(stats.totalLGNS), color: 'text-pink-400', icon: '🪙' },
+          { label: 'slgns Bal', value: formatUnits(stats.totalSLGNS, 9), color: 'text-emerald-400', icon: '🌟' },
+          { label: 'Spider Rew.', value: formatUnits(stats.totalRewards), color: 'text-amber-400', icon: '🕷️' },
         ].map((stat, i) => (
-          <div key={i} className="bg-slate-900/40 p-5 rounded-3xl border border-slate-800/50 flex flex-col justify-center h-28 hover:border-slate-700 transition-all">
-            <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">{stat.label}</span>
+          <div key={i} className="bg-slate-900/40 p-5 rounded-3xl border border-slate-800/60 flex flex-col justify-between h-28 hover:border-slate-600 transition-all hover:-translate-y-1 shadow-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">{stat.label}</span>
+              <span className="text-xs">{stat.icon}</span>
+            </div>
             <div className="flex items-baseline gap-1">
-              <span className={`text-xl font-black ${stat.color}`}>{parseFloat(stat.value).toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
+              <span className={`text-xl font-black ${stat.color}`}>{parseFloat(stat.value).toLocaleString(undefined, {maximumFractionDigits: 1})}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-slate-900/40 p-8 rounded-[2rem] border border-slate-800/50 min-h-[450px] shadow-xl">
+        <div className="bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800/60 min-h-[450px] shadow-2xl flex flex-col">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold">Staking Distribution</h3>
-            <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full font-bold uppercase">Top 10 Unique</span>
+            <h3 className="text-xl font-bold flex items-center gap-3">
+              <span className="p-2 bg-indigo-500/10 rounded-xl">📊</span>
+              Staking Analytics
+            </h3>
+            <span className="text-[10px] bg-slate-800 text-slate-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-tighter">Unique Wallet Sample</span>
           </div>
-          <div className="w-full h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="flex-1 w-full min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  cursor={{fill: '#1e293b'}}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', padding: '12px' }}
+                  cursor={{fill: '#1e293b', opacity: 0.4}}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '20px', padding: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
                   itemStyle={{ color: '#f8fafc', fontWeight: 'bold' }}
                 />
-                <Bar dataKey="staking" fill="#6366f1" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="staking" fill="#6366f1" radius={[10, 10, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-slate-900/40 p-8 rounded-[2rem] border border-slate-800/50 min-h-[450px] shadow-xl text-center">
-          <h3 className="text-xl font-bold mb-8 text-left">Aggregated Assets</h3>
-          <div className="w-full h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+        <div className="bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800/60 min-h-[450px] shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between mb-8 text-left">
+            <h3 className="text-xl font-bold flex items-center gap-3">
+              <span className="p-2 bg-pink-500/10 rounded-xl">🥧</span>
+              Asset Composition
+            </h3>
+          </div>
+          <div className="flex-1 w-full min-h-[300px]">
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
               <PieChart>
                 <Pie
                   data={[
                     { name: 'Staked', value: parseFloat(formatUnits(stats.totalStaked)) },
-                    { name: 'Liquid LGNS', value: parseFloat(formatUnits(stats.totalLGNS)) },
-                    { name: 'Liquid slgns', value: parseFloat(formatUnits(stats.totalSLGNS)) },
+                    { name: 'LGNS', value: parseFloat(formatUnits(stats.totalLGNS)) },
+                    { name: 'slgns', value: parseFloat(formatUnits(stats.totalSLGNS)) },
                   ]}
-                  cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={8} dataKey="value" stroke="none"
+                  cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={10} dataKey="value" stroke="none"
                 >
                   {COLORS.map((color, index) => <Cell key={`cell-${index}`} fill={color} />)}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '20px' }}
                 />
-                <Legend verticalAlign="bottom" height={36}/>
+                <Legend verticalAlign="bottom" height={40} iconType="circle" />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/50 overflow-hidden shadow-2xl">
-        <div className="p-8 border-b border-slate-800 bg-slate-900/60 flex flex-col md:flex-row gap-6 items-center justify-between">
+      {/* Registry Table */}
+      <div className="bg-slate-900/40 rounded-[3rem] border border-slate-800/60 overflow-hidden shadow-2xl pb-4">
+        <div className="p-8 border-b border-slate-800/50 bg-slate-950/20 flex flex-col md:flex-row gap-6 items-center justify-between">
           <div>
-            <h3 className="text-2xl font-black">Address Registry</h3>
-            <p className="text-sm text-slate-500 mt-1 font-medium">{filteredData.length} Records Detected</p>
+            <h3 className="text-2xl font-black tracking-tight">Wallet Registry</h3>
+            <p className="text-xs text-slate-500 mt-1 font-bold tracking-widest uppercase">{filteredData.length} records in view</p>
           </div>
           <div className="relative w-full md:w-1/3">
             <input 
               type="text"
-              placeholder="Search by remark or address..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm shadow-inner"
+              placeholder="Filter by remark or address..."
+              className="w-full bg-slate-950/80 border border-slate-700/50 rounded-2xl px-12 py-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm shadow-inner text-slate-300"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <svg className="absolute left-4 top-4 w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <svg className="absolute left-4 top-4.5 w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[1300px]">
             <thead>
-              <tr className="bg-slate-950/50 text-slate-500 text-[10px] font-black uppercase tracking-widest text-center border-b border-slate-800">
-                <th className="px-8 py-6 text-left">Identity / Remark</th>
-                <th className="px-8 py-6 text-left">A-Address (Main)</th>
-                <th className="px-8 py-6 text-left">Derived (Safe)</th>
+              <tr className="bg-slate-950/40 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] text-center border-b border-slate-800/50">
+                <th className="px-8 py-6 text-left">Identity</th>
+                <th className="px-8 py-6 text-left">Main (A) Address</th>
+                <th className="px-8 py-6 text-left">Safe (Derived)</th>
                 <th className="px-8 py-6">Total Stake</th>
                 <th className="px-8 py-6">Mint Stake</th>
                 <th className="px-8 py-6">Bond Stake</th>
-                <th className="px-8 py-6 text-amber-500">Spider Rewards</th>
+                <th className="px-8 py-6 text-amber-500">Spider Rew.</th>
                 <th className="px-8 py-6">LGNS Bal</th>
                 <th className="px-8 py-6">slgns Bal</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-800/30">
               {filteredData.map((item, idx) => {
-                const isRepeat = filteredData.slice(0, idx).some(prev => prev.aAddress.toLowerCase() === item.aAddress.toLowerCase());
+                const isRepeat = filteredData.slice(0, idx).some(prev => (prev.aAddress || '').toLowerCase() === (item.aAddress || '').toLowerCase());
                 
                 return (
-                  <tr key={`${item.aAddress}-${idx}`} className={`hover:bg-indigo-500/5 transition-colors group text-center ${isRepeat ? 'opacity-70 grayscale-[0.3]' : ''}`}>
+                  <tr key={`${item.aAddress}-${idx}`} className={`hover:bg-indigo-500/5 transition-all group text-center ${isRepeat ? 'opacity-50 grayscale-[0.2]' : ''}`}>
                     <td className="px-8 py-6 text-left">
                       {editingRemark?.index === idx ? (
                         <input 
-                          className="bg-slate-950 border border-indigo-500 rounded-xl px-3 py-2 text-sm outline-none w-full shadow-lg"
+                          className="bg-slate-950 border border-indigo-500 rounded-xl px-3 py-2 text-sm outline-none w-full shadow-2xl"
                           value={editingRemark.value}
                           autoFocus
                           onBlur={() => {
@@ -354,40 +362,40 @@ const App: React.FC = () => {
                         />
                       ) : (
                         <div 
-                          className="text-indigo-300 cursor-pointer hover:text-indigo-100 text-sm font-bold transition-colors"
+                          className="text-indigo-400/90 cursor-pointer hover:text-indigo-200 text-sm font-black transition-colors"
                           onClick={() => setEditingRemark({ index: idx, value: item.remark })}
                         >
-                          {item.remark || <span className="text-slate-700 italic font-normal">Add remark...</span>}
+                          {item.remark || <span className="text-slate-700 italic font-medium opacity-40">Unnamed</span>}
                         </div>
                       )}
-                      <div className="text-[10px] text-slate-600 mt-1.5 flex items-center gap-2 font-bold">
+                      <div className="text-[9px] text-slate-600 mt-1.5 flex items-center gap-2 font-black tracking-widest">
                         {item.log}
-                        {isRepeat && <span className="bg-amber-500/10 text-amber-500/80 px-2 py-0.5 rounded-full border border-amber-500/20 tracking-tighter">DUPLICATE</span>}
+                        {isRepeat && <span className="bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full border border-amber-500/20 text-[8px]">REPEATED</span>}
                       </div>
                     </td>
                     <td className="px-8 py-6 font-mono text-[10px] text-slate-400 text-left">
-                      <div className="bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 w-fit">{item.aAddress}</div>
+                      <div className="bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800/50 w-fit tabular-nums">{item.aAddress}</div>
                     </td>
                     <td className="px-8 py-6 font-mono text-[10px] text-slate-500 text-left">
-                      <div className="hover:text-slate-300 transition-colors">{maskAddress(item.derivedAddress)}</div>
+                      <div className="hover:text-slate-300 transition-colors tabular-nums">{maskAddress(item.derivedAddress)}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-white">{parseFloat(formatUnits(item.totalStaking)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-white tabular-nums">{parseFloat(formatUnits(item.totalStaking)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-cyan-500">{parseFloat(formatUnits(item.airdropEnergyStaking)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-cyan-500 tabular-nums">{parseFloat(formatUnits(item.airdropEnergyStaking)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-violet-500">{parseFloat(formatUnits(item.bondStaking)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-violet-500 tabular-nums">{parseFloat(formatUnits(item.bondStaking)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-amber-500">{parseFloat(formatUnits(item.zhuwangReward)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-amber-500 tabular-nums">{parseFloat(formatUnits(item.zhuwangReward)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-pink-500">{parseFloat(formatUnits(item.lgnsBalance)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-pink-500 tabular-nums">{parseFloat(formatUnits(item.lgnsBalance)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="text-sm font-black text-emerald-500">{parseFloat(formatUnits(item.slgnsBalance)).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                      <div className="text-sm font-black text-emerald-500 tabular-nums">{parseFloat(formatUnits(item.slgnsBalance)).toLocaleString(undefined, {minimumFractionDigits: 1})}</div>
                     </td>
                   </tr>
                 );
