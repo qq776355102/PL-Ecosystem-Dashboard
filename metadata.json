@@ -1,0 +1,5 @@
+{
+  "name": "Polygon Ecosystem Data Dashboard",
+  "description": "A high-performance blockchain data visualization platform for Polygon network staking, rewards, and token balances with batch processing capabilities.",
+  "requestFramePermissions": []
+}
